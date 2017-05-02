@@ -28,6 +28,8 @@ public class BTManager {
     private BluetoothServerSocket mBluetoothServerSocket;
     private OnAcceptBluetoothSocketListener mOnAcceptBluetoothSocketListener;
     private OnPairBluetoothDeviceListener mOnPairBluetoothDeviceListener;
+    private OnBluetoothStateChangedListener mOnBluetoothStateChangedListener;
+    private OnBluetoothStateChangingListener mOnBluetoothStateChangingListener;
 
     private BTManager(Context context) {
         init(context);
@@ -106,6 +108,14 @@ public class BTManager {
         mOnPairBluetoothDeviceListener = listener;
     }
 
+    public void setOnBluetoothStateChangingListener(OnBluetoothStateChangingListener listener) {
+        mOnBluetoothStateChangingListener = listener;
+    }
+
+    public void setOnBluetoothStateChangedListener(OnBluetoothStateChangedListener listener) {
+        mOnBluetoothStateChangedListener = listener;
+    }
+
     public boolean startDiscovery() {
         return mBluetoothAdapter.startDiscovery();
     }
@@ -127,6 +137,14 @@ public class BTManager {
 
     public static interface OnAcceptBluetoothSocketListener {
         void onAcceptBluetoothSocket(BluetoothSocket socket);
+    }
+
+    public static interface OnBluetoothStateChangedListener {
+        void onBluetoothStateChanged(boolean enable);
+    }
+
+    public static interface OnBluetoothStateChangingListener {
+        void onBluetoothStateChanging(boolean enable);
     }
 
     private class BluetoothReceiver extends BroadcastReceiver {
@@ -157,6 +175,35 @@ public class BTManager {
                     }
                 }
 
+            }
+
+
+            // 藍牙開關變動
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
+                final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+                switch (state) {
+                    case BluetoothAdapter.STATE_OFF:
+                        if (mOnBluetoothStateChangedListener != null) {
+                            mOnBluetoothStateChangedListener.onBluetoothStateChanged(false);
+                        }
+                        break;
+                    case BluetoothAdapter.STATE_TURNING_OFF:
+                        if (mOnBluetoothStateChangingListener != null) {
+                            mOnBluetoothStateChangingListener.onBluetoothStateChanging(false);
+                        }
+                        break;
+                    case BluetoothAdapter.STATE_ON:
+                        if (mOnBluetoothStateChangedListener != null) {
+                            mOnBluetoothStateChangedListener.onBluetoothStateChanged(true);
+                        }
+                        break;
+                    case BluetoothAdapter.STATE_TURNING_ON:
+                        if (mOnBluetoothStateChangingListener != null) {
+                            mOnBluetoothStateChangingListener.onBluetoothStateChanging(true);
+                        }
+                        break;
+                }
+                return;
             }
         }
     }

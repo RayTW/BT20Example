@@ -47,6 +47,13 @@ public class MainActivity extends Activity {
         }
     };
 
+    private BTManager.OnBluetoothStateChangedListener mOnBluetoothStateChangedListener = new BTManager.OnBluetoothStateChangedListener() {
+        @Override
+        public void onBluetoothStateChanged(boolean enable) {
+            showTextToast("enable=" + enable);
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -71,6 +78,8 @@ public class MainActivity extends Activity {
 
         mBTManager.setOnFoundBluetoothDeviceListener(mOnFoundBluetoothDeviceListener);
         mBTManager.setOnPairBluetoothDeviceListener(mOnPairBluetoothDeviceListener);
+
+        mBTManager.setOnBluetoothStateChangedListener(mOnBluetoothStateChangedListener);
 
         findViewById(R.id.discover).setOnClickListener(new View.OnClickListener() {
             @Override
