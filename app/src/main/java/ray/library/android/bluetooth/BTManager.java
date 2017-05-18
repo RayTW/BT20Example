@@ -8,7 +8,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.util.Log;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -30,6 +29,7 @@ public class BTManager {
     private OnPairBluetoothDeviceListener mOnPairBluetoothDeviceListener;
     private OnBluetoothStateChangedListener mOnBluetoothStateChangedListener;
     private OnBluetoothStateChangingListener mOnBluetoothStateChangingListener;
+    private OnDiscoveryBluetoothFinishListener mOnDiscoveryBluetoothFinishListener;
 
     private BTManager(Context context) {
         init(context);
@@ -53,8 +53,15 @@ public class BTManager {
             appContext = context;
         }
         mContext = appContext;
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        registerBluetoothReceiver(mContext);
+        try {
+            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+            if (mBluetoothAdapter != null) {
+                registerBluetoothReceiver(mContext);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void initSPPBluetoothServerSocket() throws IOException {
@@ -62,6 +69,9 @@ public class BTManager {
     }
 
     public void initBluetoothServerSocket(String name, String uuid) throws IOException {
+        if (!isSupported()) {
+            throw new UnsupportedOperationException("mBluetoothAdapter == null");
+        }
         mBluetoothServerSocket = mBluetoothAdapter
                 .listenUsingInsecureRfcommWithServiceRecord(name,
                         UUID.fromString(uuid));
@@ -77,12 +87,28 @@ public class BTManager {
             intentFilter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
             intentFilter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
             intentFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+            intentFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
             context.registerReceiver(mBluetoothReceiver, intentFilter);
         }
     }
 
     public BluetoothDevice getRemoteDevice(String address) {
+        if (!isSupported()) {
+            return null;
+        }
+
         return mBluetoothAdapter.getRemoteDevice(address);
+    }
+
+    public boolean isSupported() {
+        return mBluetoothAdapter != null;
+    }
+
+    public boolean isEnable() {
+        if (isSupported()) {
+            return mBluetoothAdapter.isEnabled();
+        }
+        return false;
     }
 
     public boolean setBluetooth(boolean enable) {
@@ -116,11 +142,21 @@ public class BTManager {
         mOnBluetoothStateChangedListener = listener;
     }
 
+    public void setOnDiscoveryBluetoothFinishListener(OnDiscoveryBluetoothFinishListener listener) {
+        mOnDiscoveryBluetoothFinishListener = listener;
+    }
+
     public boolean startDiscovery() {
+        if (!isSupported()) {
+            return false;
+        }
         return mBluetoothAdapter.startDiscovery();
     }
 
     public boolean cancelDiscovery() {
+        if (!isSupported()) {
+            return false;
+        }
         return mBluetoothAdapter.cancelDiscovery();
     }
 
@@ -147,11 +183,14 @@ public class BTManager {
         void onBluetoothStateChanging(boolean enable);
     }
 
+    public static interface OnDiscoveryBluetoothFinishListener {
+        void onDiscoveryBluetoothFinish();
+    }
+
     private class BluetoothReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Log.d(TAG, "BluetoothReceiver.action[" + action + "]");
 
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
@@ -174,12 +213,9 @@ public class BTManager {
                         mOnPairBluetoothDeviceListener.onUnpairedBluetoothDevice(device);
                     }
                 }
-
-            }
-
-
-            // 藍牙開關變動
-            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
+            } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
+                mOnDiscoveryBluetoothFinishListener.onDiscoveryBluetoothFinish();
+            } else if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {// 藍牙開關變動
                 final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
                 switch (state) {
                     case BluetoothAdapter.STATE_OFF:
@@ -203,7 +239,6 @@ public class BTManager {
                         }
                         break;
                 }
-                return;
             }
         }
     }
