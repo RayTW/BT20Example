@@ -11,6 +11,7 @@ import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -75,6 +76,7 @@ public class MainActivity extends Activity {
 
     private void init() {
         mBTManager = BTManager.getInstance(MainActivity.this);
+        Log.d(TAG, "mBTManager,isSupported["+mBTManager.isSupported()+"],isEnable["+mBTManager.isEnable()+"]");
 
         mBTManager.setOnFoundBluetoothDeviceListener(mOnFoundBluetoothDeviceListener);
         mBTManager.setOnPairBluetoothDeviceListener(mOnPairBluetoothDeviceListener);
